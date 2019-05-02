@@ -42,7 +42,9 @@ func run(args []string) {
 	}
 	defer inFile.Close()
 	csvReader := csv.NewReader(bufio.NewReader(inFile))
-	createRrecords := make(map[string]opTraceRecord)
+	createRecords := make(map[string]opTraceRecord)
+	minReqTimeStartMicros := int64(0)
+	minReqTimeStartMicrosWasSet := false
 	for {
 		line, err := csvReader.Read()
 		if err == io.EOF {
@@ -61,20 +63,23 @@ func run(args []string) {
 		}
 		switch opTypeCode {
 		case OP_TYPE_CODE_CREATE:
+			if !minReqTimeStartMicrosWasSet {
+				minReqTimeStartMicros = timeStartMicros
+			}
 			rec := opTraceRecord{
 				ItemPath:           itemPath,
 				ReqTimeStartMicros: timeStartMicros,
 				DurationMicros:     durationMicros,
 			}
-			createRrecords[rec.ItemPath] = rec
+			createRecords[rec.ItemPath] = rec
 		case OP_TYPE_CODE_READ:
-			createRec, found := createRrecords[itemPath]
+			createRec, found := createRecords[itemPath]
 			if found {
 				latencyMicros, err := strconv.ParseInt(line[6], 10, 64)
 				if err == nil {
 					e2eLat := timeStartMicros + latencyMicros - createRec.ReqTimeStartMicros - createRec.DurationMicros
-					fmt.Println(itemPath + "," + strconv.FormatInt(createRec.ReqTimeStartMicros, 10) + "," + strconv.FormatInt(e2eLat, 10))
-					delete(createRrecords, itemPath)
+					fmt.Println(itemPath + "," + strconv.FormatInt(createRec.ReqTimeStartMicros-minReqTimeStartMicros, 10) + "," + strconv.FormatInt(e2eLat, 10))
+					delete(createRecords, itemPath)
 				}
 			}
 		}

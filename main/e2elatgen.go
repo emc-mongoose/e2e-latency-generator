@@ -65,6 +65,7 @@ func run(args []string) {
 		case OP_TYPE_CODE_CREATE:
 			if !minReqTimeStartMicrosWasSet {
 				minReqTimeStartMicros = timeStartMicros
+				minReqTimeStartMicrosWasSet = true
 			}
 			rec := opTraceRecord{
 				ItemPath:           itemPath,

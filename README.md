@@ -72,7 +72,6 @@ java -jar mongoose-base/build/libs/mongoose-4.2.10.jar \
     --run-scenario=src/test/robot/api/storage/data/e2e_latency.js \
     --load-step-id=e2e_latency_test \
     --item-data-size=10KB \
-    --storage-driver-limit-concurrency=10 \
     --load-op-limit-count=100000
 ```
 
@@ -80,23 +79,26 @@ java -jar mongoose-base/build/libs/mongoose-4.2.10.jar \
 
 The tool writes the CSV records to the standard output. Each CSV record has has the following columns:
 1. Item path (may be considered as a file/object/message/event identifier)
-2. Item writing start time offset in microseconds
+2. Item writing start time offset in microseconds (relative, starting from 0)
 3. The calculated end-to-end latency
 
 Example:
 ```csv
 ...
-stream1/bws8pvw9sghq,1556724379276017,1538916
-stream1/5ua3l2kietxd,1556724379276237,1418718
-stream1/81t6larvcuhw,1556724379276402,1420782
-stream1/7i2e1sfbiy0o,1556724379280238,1421182
-stream1/gotspifzf14h,1556724379281785,1421532
-stream1/rufanzc5zugn,1556724379285645,1425138
-stream1/89iv0a4lwj6v,1556724379286654,1422829
-stream1/8v5z8cc9dgd6,1556724379287174,1419372
-stream1/ryfpwg6nxwb8,1556724379287413,1417090
-stream1/gho8ejqhyxe2,1556724379287603,1354413
-stream1/wykisi3nc223,1556724379292403,1352918
+stream1/83t5yxfi12e0,41829867,2751
+stream1/a3obpqb01qh6,41835798,229
+stream1/aydlzqu14n22,41838473,2999
+stream1/5fgdcurymj0q,41841918,805
+stream1/wv1q53bs8l61,41843734,1601
+stream1/lblm3ytmeyu9,41854278,10644
+stream1/36n30r5pa3de,41855355,10879
+stream1/pykghts2izmn,41867068,3371
+stream1/wcmsurgrpht5,41876439,411
+stream1/zhvwrprmontl,41880093,463
+stream1/loxvodkyijpn,41884926,2371
+stream1/7aeq3w3oo7qy,41886162,3798
+stream1/fwexsn3qwa4u,41890030,8396
+stream1/6bchppau0mh6,41891615,7530
 ...
 ```
 
@@ -119,7 +121,9 @@ Example:
 The resulting file may be used to analyze the *end-to-end latency* distribution or temporal profile. The charts below 
 were produced using the spreadsheet processor for the resulting CSV data:
 
-![](example_e2e_distribution.png)
 ![](example_e2e_profile.png)
 
-Note the high latency yield during the first 2 seconds. This is supposed to be the HotSpot intervention.
+The most representative and stable data in the picture above is between 200 seconds offset and 700 seconds offset. This
+range should be used to calculate the E2E latency distribution:
+
+![](example_e2e_distribution.png)

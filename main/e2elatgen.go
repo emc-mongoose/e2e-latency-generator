@@ -29,7 +29,6 @@ func printUsage() {
 }
 
 type opTraceRecord struct {
-	ItemPath           string
 	ReqTimeStartMicros int64
 	DurationMicros     int64
 }
@@ -68,11 +67,10 @@ func run(args []string) {
 				minReqTimeStartMicrosWasSet = true
 			}
 			rec := opTraceRecord{
-				ItemPath:           itemPath,
 				ReqTimeStartMicros: timeStartMicros,
 				DurationMicros:     durationMicros,
 			}
-			createRecords[rec.ItemPath] = rec
+			createRecords[itemPath] = rec
 		case OP_TYPE_CODE_READ:
 			createRec, found := createRecords[itemPath]
 			if found {

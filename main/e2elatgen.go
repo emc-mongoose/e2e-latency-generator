@@ -10,9 +10,11 @@ import (
 )
 
 const (
-	OP_TYPE_CODE_CREATE = 1
-	OP_TYPE_CODE_READ   = 2
-	STATUS_CODE_SUCC    = 4
+	OP_TYPE_CODE_CREATE   = 1
+	OP_TYPE_CODE_READ     = 2
+	STATUS_CODE_SUCC      = 4
+	HEATMAP_X_STEP_MICROS = 1000000
+	HEATMAP_Y_STEP_COUNT  = 100
 )
 
 func main() {
@@ -44,6 +46,9 @@ func run(args []string) {
 	createRecords := make(map[string]opTraceRecord)
 	minReqTimeStartMicros := int64(0)
 	minReqTimeStartMicrosWasSet := false
+	e2eLatMax := int64(0)
+	e2eLatSrcData := make([][]int64, 1)
+	xOffset := 0
 	for {
 		line, err := csvReader.Read()
 		if err == io.EOF {
@@ -77,10 +82,48 @@ func run(args []string) {
 				latencyMicros, err := strconv.ParseInt(line[6], 10, 64)
 				if err == nil {
 					e2eLat := timeStartMicros + latencyMicros - createRec.ReqTimeStartMicros - createRec.DurationMicros
-					fmt.Println(itemPath + "," + strconv.FormatInt(createRec.ReqTimeStartMicros-minReqTimeStartMicros, 10) + "," + strconv.FormatInt(e2eLat, 10))
+					if e2eLat > e2eLatMax {
+						e2eLatMax = e2eLat
+					}
+					timeOffsetMicros := createRec.ReqTimeStartMicros - minReqTimeStartMicros
+					xOffsetNew := int(timeOffsetMicros / HEATMAP_X_STEP_MICROS)
+					if xOffset < xOffsetNew {
+						xOffset = xOffsetNew
+						for {
+							e2eLatSrcData = append(e2eLatSrcData, make([]int64, 1))
+							if xOffset < len(e2eLatSrcData) {
+								break
+							}
+						}
+						e2eLatSrcData = append(e2eLatSrcData, make([]int64, 1))
+						e2eLatSrcData[xOffset][0] = e2eLat
+					} else {
+						e2eLatSrcData[xOffset] = append(e2eLatSrcData[xOffset], e2eLat)
+					}
+					fmt.Println(itemPath + "," + strconv.FormatInt(timeOffsetMicros, 10) + "," + strconv.FormatInt(e2eLat, 10))
 					delete(createRecords, itemPath)
 				}
 			}
 		}
 	}
+	yStepSize := float64(e2eLatMax) / HEATMAP_Y_STEP_COUNT
+	maxCount := 0
+	counts := make([][HEATMAP_Y_STEP_COUNT]int, len(e2eLatSrcData))
+	for colPos, e2eLatCol := range e2eLatSrcData {
+		for rowPos := 0; rowPos < HEATMAP_Y_STEP_COUNT; rowPos++ {
+			minVal := yStepSize * float64(rowPos)
+			maxVal := minVal + yStepSize
+			count := 0
+			for _, val := range e2eLatCol {
+				if float64(val) >= minVal && float64(val) < maxVal {
+					count++
+				}
+			}
+			if count > maxCount {
+				maxCount = count
+			}
+			counts[colPos][rowPos] = count
+		}
+	}
+	fmt.Println("Yohoho")
 }

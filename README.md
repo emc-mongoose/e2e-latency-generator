@@ -117,7 +117,7 @@ Raw image:
 <img src="heatmap_example.png" alt="heatmap example" />
 
 The produced image may be resized and annotated:
-<img src="heatmap_example.png" alt="heatmap example" width="800" height="600" />
+<img src="heatmap_example.png" alt="heatmap example" height="400" />
 
 ## Usage
 

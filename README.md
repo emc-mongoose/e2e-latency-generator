@@ -113,11 +113,12 @@ latency heatmap chart.
     corresponding 100 rows.
 2. X axis is linear. By default it's width is the count of pixels equal max timestamp minus min.
 
-Raw image:
-<img src="heatmap_example.png" alt="heatmap example" />
+Raw chart example:
+<img src="heatmap_example.png" alt="heatmap example" width="893" />
 
-The produced image may be resized and annotated:
-<img src="heatmap_example.png" alt="heatmap example" height="400" />
+In this chart above, the min latency value is 39 &mu;s, max is 2,814,390 &mu;s. So the ratio between max and min is 
+~ 72164. This range is divided by the 100 pixel rows each containing the corresponding range with the scale factor of  
+~ 1.1183640462987132. The sequence length is 893 seconds (893 pixels).
 
 ## Usage
 

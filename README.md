@@ -15,7 +15,7 @@ where
 
 ## Approach
 
-### Input Data
+### Input
 
 Some storages support the *subscription* for the messages which should be read back immediately after been written. The 
 *end-to-end* latency may be measured using Mongoose's 
@@ -75,7 +75,9 @@ java -jar mongoose-base/build/libs/mongoose-4.2.10.jar \
     --load-op-limit-count=100000
 ```
 
-### Output Format
+### Output
+
+#### Standard Output
 
 The tool writes the CSV records to the standard output. Each CSV record has has the following columns:
 1. Item path (may be considered as a file/object/message/event identifier)
@@ -102,6 +104,17 @@ stream1/6bchppau0mh6,41891615,7530
 ...
 ```
 
+#### Heatmap Output
+
+In addition to the standard output, the tool also outputs the `heatmap.png` file containing the produced end-to-end 
+latency heatmap chart.
+
+<img src="heatmap_example.png" alt="heatmap example" width="400" height="300"/>
+
+1. Y axis is logarithmic between the detected latency value min and max. By default it's height is 100 px and 
+    corresponding 100 rows.
+2. X axis is linear. By default it's width is the count of pixels equal max timestamp minus min.
+
 ## Usage
 
 ### Build
@@ -115,15 +128,3 @@ Example:
 ```bash
 ./e2elatgen ~/.mongoose/4.2.10/log/e2e_latency_test/op.trace.csv > e2e_latency_test.csv
 ```
-
-### Results Analysis
-
-The resulting file may be used to analyze the *end-to-end latency* distribution or temporal profile. The charts below 
-were produced using the spreadsheet processor for the resulting CSV data:
-
-![](example_e2e_profile.png)
-
-The most representative and stable data in the picture above is between 200 seconds offset and 700 seconds offset. This
-range should be used to calculate the E2E latency distribution:
-
-![](example_e2e_distribution.png)

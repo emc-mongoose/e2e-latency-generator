@@ -4,7 +4,12 @@ import (
 	"bufio"
 	"encoding/csv"
 	"fmt"
+	"image"
+	"image/color"
+	"image/draw"
+	"image/png"
 	"io"
+	"math"
 	"os"
 	"strconv"
 )
@@ -15,6 +20,7 @@ const (
 	STATUS_CODE_SUCC      = 4
 	HEATMAP_X_STEP_MICROS = 1000000
 	HEATMAP_Y_STEP_COUNT  = 100
+	HEATMAP_MAX_VALUE     = 255
 )
 
 func main() {
@@ -36,6 +42,8 @@ type opTraceRecord struct {
 }
 
 func run(args []string) {
+
+	// open the source csv file
 	inFile, err := os.Open(args[1])
 	if err != nil {
 		fmt.Println("Failed to open the input file " + args[1])
@@ -43,12 +51,15 @@ func run(args []string) {
 	}
 	defer inFile.Close()
 	csvReader := csv.NewReader(bufio.NewReader(inFile))
+
+	// produce the latency data
 	createRecords := make(map[string]opTraceRecord)
 	minReqTimeStartMicros := int64(0)
 	minReqTimeStartMicrosWasSet := false
-	e2eLatMax := int64(0)
-	e2eLatSrcData := make([][]int64, 1)
-	xOffset := 0
+	latMin := int64(9223372036854775807) // max value
+	latMax := int64(0)
+	latSrcData := make([][]int64, 1)
+	latSrcData[0] = make([]int64, 1)
 	for {
 		line, err := csvReader.Read()
 		if err == io.EOF {
@@ -81,41 +92,45 @@ func run(args []string) {
 			if found {
 				latencyMicros, err := strconv.ParseInt(line[6], 10, 64)
 				if err == nil {
-					e2eLat := timeStartMicros + latencyMicros - createRec.ReqTimeStartMicros - createRec.DurationMicros
-					if e2eLat > e2eLatMax {
-						e2eLatMax = e2eLat
+					lat := timeStartMicros + latencyMicros - createRec.ReqTimeStartMicros - createRec.DurationMicros
+					if lat < latMin {
+						latMin = lat
+					}
+					if lat > latMax {
+						latMax = lat
 					}
 					timeOffsetMicros := createRec.ReqTimeStartMicros - minReqTimeStartMicros
-					xOffsetNew := int(timeOffsetMicros / HEATMAP_X_STEP_MICROS)
-					if xOffset < xOffsetNew {
-						xOffset = xOffsetNew
-						for {
-							e2eLatSrcData = append(e2eLatSrcData, make([]int64, 1))
-							if xOffset < len(e2eLatSrcData) {
-								break
-							}
+					xOffset := int(timeOffsetMicros / HEATMAP_X_STEP_MICROS)
+					for {
+						if len(latSrcData) > xOffset {
+							break
 						}
-						e2eLatSrcData = append(e2eLatSrcData, make([]int64, 1))
-						e2eLatSrcData[xOffset][0] = e2eLat
-					} else {
-						e2eLatSrcData[xOffset] = append(e2eLatSrcData[xOffset], e2eLat)
+						latSrcData = append(latSrcData, make([]int64, 1))
 					}
-					fmt.Println(itemPath + "," + strconv.FormatInt(timeOffsetMicros, 10) + "," + strconv.FormatInt(e2eLat, 10))
+					latSrcData[xOffset] = append(latSrcData[xOffset], lat)
+					// print raw latency data to the standard output
+					fmt.Println(
+						itemPath + "," + strconv.FormatInt(timeOffsetMicros, 10) + "," +
+							strconv.FormatInt(lat, 10))
 					delete(createRecords, itemPath)
 				}
 			}
 		}
 	}
-	yStepSize := float64(e2eLatMax) / HEATMAP_Y_STEP_COUNT
+
+	// produce the counts on the logarithmic scale
+	maxToMinRatio := float64(latMax) / float64(latMin)
+	yStepFactor := math.Pow(maxToMinRatio, 1.0/HEATMAP_Y_STEP_COUNT)
 	maxCount := 0
-	counts := make([][HEATMAP_Y_STEP_COUNT]int, len(e2eLatSrcData))
-	for colPos, e2eLatCol := range e2eLatSrcData {
+	seqLen := len(latSrcData)
+	counts := make([][HEATMAP_Y_STEP_COUNT]int, seqLen)
+	for colPos, latCol := range latSrcData {
 		for rowPos := 0; rowPos < HEATMAP_Y_STEP_COUNT; rowPos++ {
-			minVal := yStepSize * float64(rowPos)
-			maxVal := minVal + yStepSize
+			cellFrom := float64(latMin) * math.Pow(yStepFactor, float64(rowPos))
+			cellTo := cellFrom * yStepFactor
 			count := 0
-			for _, val := range e2eLatCol {
-				if float64(val) >= minVal && float64(val) < maxVal {
+			for _, val := range latCol {
+				if float64(val) >= cellFrom && float64(val) < cellTo {
 					count++
 				}
 			}
@@ -125,5 +140,26 @@ func run(args []string) {
 			counts[colPos][rowPos] = count
 		}
 	}
-	fmt.Println("Yohoho")
+
+	// draw the output image
+	heatMapImg := image.NewRGBA(image.Rect(0, 0, seqLen, HEATMAP_Y_STEP_COUNT))
+	// fill with white
+	bgColor := color.RGBA{255, 255, 255, 255}
+	draw.Draw(heatMapImg, heatMapImg.Bounds(), &image.Uniform{bgColor}, image.ZP, draw.Src)
+	for colPos := range counts {
+		for rowPos := 0; rowPos < HEATMAP_Y_STEP_COUNT; rowPos++ {
+			v := uint8(HEATMAP_MAX_VALUE - HEATMAP_MAX_VALUE*counts[colPos][rowPos]/maxCount)
+			c := color.RGBA{v, v, v, 255}
+			heatMapImg.Set(colPos, HEATMAP_Y_STEP_COUNT-rowPos, c)
+		}
+	}
+	w, err := os.Create("heatmap.png")
+	if err != nil {
+		panic(err)
+	}
+	defer w.Close()
+	err = png.Encode(w, heatMapImg)
+	if err != nil {
+		panic(err)
+	}
 }

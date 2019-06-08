@@ -106,19 +106,15 @@ stream1/6bchppau0mh6,41891615,7530
 
 #### Heatmap Output
 
-In addition to the standard output, the tool also outputs the `heatmap.png` file containing the produced end-to-end 
-latency heatmap chart.
+In addition to the standard output, the tool also outputs the `heatmap.png` file containing the produced end-to-end latency heatmap chart.
 
-1. Y axis is logarithmic between the detected latency value min and max. By default it's height is 100 px and 
-    corresponding 100 rows.
+1. Y axis is logarithmic between the detected latency value min and max. By default it's height is 100 px and corresponding 100 rows.
 2. X axis is linear. By default it's width is the count of pixels equal max timestamp minus min.
 
 Raw chart example:
 <img src="heatmap_example.png" alt="heatmap example" width="893" />
 
-In this chart above, the min latency value is 39 &mu;s, max is 2,814,390 &mu;s. So the ratio between max and min is 
-~ 72164. This range is divided by the 100 pixel rows each containing the corresponding range with the scale factor of  
-~ 1.1183640462987132. The sequence length is 893 seconds (893 pixels).
+In this chart above, the min latency value is 39 &mu;s, max is 2,814,390 &mu;s. So the ratio between max and min is ~ 72164. This range is divided by the 100 pixel rows each containing the corresponding range with the scale factor of  ~ 1.1183640462987132. The sequence length is 893 seconds (893 pixels).
 
 ## Usage
 
